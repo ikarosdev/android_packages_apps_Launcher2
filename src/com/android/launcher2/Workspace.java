@@ -62,7 +62,7 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
     /**
      * The velocity at which a fling gesture will cause us to snap to the next screen
      */
-    private static final int SNAP_VELOCITY = 600;
+    private static final int SNAP_VELOCITY = 300;
 
     private final WallpaperManager mWallpaperManager;
     
@@ -131,7 +131,7 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
     private static final float FLING_VELOCITY_INFLUENCE = 0.4f;
     
     private static class WorkspaceOvershootInterpolator implements Interpolator {
-        private static final float DEFAULT_TENSION = 1.3f;
+        private static final float DEFAULT_TENSION = 0.9f;
         private float mTension;
 
         public WorkspaceOvershootInterpolator() {
@@ -812,9 +812,11 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
         toScreen = Math.min(toScreen, count - 1);
 
         for (int i = fromScreen; i <= toScreen; i++) {
-            final CellLayout layout = (CellLayout) getChildAt(i);
-            layout.setChildrenDrawnWithCacheEnabled(true);
-            layout.setChildrenDrawingCacheEnabled(true);
+            if (i >= mCurrentScreen - 1 || i <= mCurrentScreen + 1) {
+                final CellLayout layout = (CellLayout) getChildAt(i);
+                layout.setChildrenDrawnWithCacheEnabled(true);  
+                layout.setChildrenDrawingCacheEnabled(true);
+            }
         }
     }
 
@@ -890,7 +892,8 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
             if (mTouchState == TOUCH_STATE_SCROLLING) {
                 final VelocityTracker velocityTracker = mVelocityTracker;
                 velocityTracker.computeCurrentVelocity(1000, mMaximumVelocity);
-                final int velocityX = (int) velocityTracker.getXVelocity(mActivePointerId);
+								final int vMultiplier = 20;
+								final int velocityX = vMultiplier * (int) velocityTracker.getXVelocity();
                 
                 final int screenWidth = getWidth();
                 final int whichScreen = (mScrollX + (screenWidth / 2)) / screenWidth;
@@ -901,13 +904,13 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
                     // Don't fling across more than one screen at a time.
                     final int bound = scrolledPos < whichScreen ?
                             mCurrentScreen - 1 : mCurrentScreen;
-                    snapToScreen(Math.min(whichScreen, bound), velocityX, true);
+                    snapToScreen(Math.min(whichScreen, bound), velocityX, false);
                 } else if (velocityX < -SNAP_VELOCITY && mCurrentScreen < getChildCount() - 1) {
                     // Fling hard enough to move right
                     // Don't fling across more than one screen at a time.
                     final int bound = scrolledPos > whichScreen ?
                             mCurrentScreen + 1 : mCurrentScreen;
-                    snapToScreen(Math.max(whichScreen, bound), velocityX, true);
+                    snapToScreen(Math.max(whichScreen, bound), velocityX, false);
                 } else {
                     snapToScreen(whichScreen, 0, true);
                 }
@@ -974,7 +977,8 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
         final int screenDelta = Math.max(1, Math.abs(whichScreen - mCurrentScreen));
         final int newX = whichScreen * getWidth();
         final int delta = newX - mScrollX;
-        int duration = (screenDelta + 1) * 100;
+				final int durationMultiplier = 60;
+				int duration = (screenDelta + 1) * durationMultiplier;
 
         if (!mScroller.isFinished()) {
             mScroller.abortAnimation();
@@ -991,7 +995,7 @@ public class Workspace extends ViewGroup implements DropTarget, DragSource, Drag
             duration += (duration / (velocity / BASELINE_FLING_VELOCITY))
                     * FLING_VELOCITY_INFLUENCE;
         } else {
-            duration += 100;
+            duration += durationMultiplier;
         }
 
         awakenScrollBars(duration);
