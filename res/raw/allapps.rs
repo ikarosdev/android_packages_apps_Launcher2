@@ -28,6 +28,8 @@ float g_MoveToTotalTime;
 float g_MoveToTime;
 float g_MoveToOldPos;
 
+int g_Cols;
+int g_Rows;
 
 // Drawing constants, should be parameters ======
 #define VIEW_ANGLE 1.28700222f
@@ -93,6 +95,7 @@ void init() {
     g_LastTouchDown = 0;
     g_LastPositionX = 0;
     g_Zoom = 0;
+    g_Animation = 1.f;
     g_SpecialHWWar = 1;
     g_MoveToTime = 0;
     g_MoveToOldPos = 0;
@@ -107,7 +110,7 @@ void move() {
     if (g_LastTouchDown) {
         float dx = -(state->newPositionX - g_LastPositionX);
         g_PosVelocity = 0;
-        g_PosPage += dx * 5.2f;
+        g_PosPage += dx * 7.2f;
 
         float pmin = -0.49f;
         float pmax = g_PosMax + 0.49f;
@@ -135,9 +138,9 @@ void setZoom() {
 
 void fling() {
     g_LastTouchDown = 0;
-    g_PosVelocity = -state->flingVelocity * 5;
+    g_PosVelocity = -state->flingVelocity * 6;
     float av = fabsf(g_PosVelocity);
-    float minVel = 3.5f;
+    float minVel = 1.5f;
 
     minVel *= 1.f - (fabsf(fracf(g_PosPage + 0.5f) - 0.5f) * 0.45f);
 
@@ -277,24 +280,21 @@ draw_home_button()
 
 void drawFrontGrid(float rowOffset, float p)
 {
-
-
-    int row, col;
-    int colCount = params->launcherCols;
-    int intRowOffset = rowOffset;
     float h = getHeight();
     float w = getWidth();
-    float colWidth = w/colCount; 
-    float rowHeight = colWidth + 25.f;
-    float yoff = 0.5f * h + 217.5f;
+
+    int intRowOffset = rowOffset;
     float rowFrac = rowOffset - intRowOffset;
+    float colWidth = 120.f;//getWidth() / 4;
+    float rowHeight = colWidth + 25.f;
+    float yoff = 0.5f * h + 1.5f * rowHeight;
 
-
+    int row, col;
+    int colCount = 4;
     if (w > h) {
-        colCount = 7;
-        colWidth = w/colCount; 
-        rowHeight = colWidth;
-        yoff = 0.47f * h + 1.f * rowHeight;
+        colCount = 6;
+        rowHeight -= 12.f;
+        yoff = 0.47f * h + 1.0f * rowHeight;
     }
 
     int iconNum = (intRowOffset - 5) * colCount;
@@ -315,7 +315,7 @@ void drawFrontGrid(float rowOffset, float p)
 
             if (iconNum >= 0) {
                 float x = colWidth * col + (colWidth / 2);
-                vpConstants->Position.x = x;
+                vpConstants->Position.x = x + 0.2f;
 
                 if (state->selectedIconIndex == iconNum && !p) {
                     bindProgramFragment(NAMED_PFTexNearest);
@@ -329,14 +329,14 @@ void drawFrontGrid(float rowOffset, float p)
                 bindProgramFragment(NAMED_PFTexMip);
                 vpConstants->ImgSize.x = ICON_TEXTURE_WIDTH_PX;
                 vpConstants->ImgSize.y = ICON_TEXTURE_HEIGHT_PX;
-                vpConstants->Position.y = y;
+                vpConstants->Position.y = y - 0.2f;
                 bindTexture(NAMED_PFTexMip, 0, loadI32(ALLOC_ICON_IDS, iconNum));
                 drawSimpleMesh(NAMED_SMCell);
 
                 bindProgramFragment(NAMED_PFTexMipAlpha);
                 vpConstants->ImgSize.x = 120.f;
                 vpConstants->ImgSize.y = 64.f;
-                vpConstants->Position.y = y - 64.f;
+                vpConstants->Position.y = y - 64.f - 0.2f;
                 bindTexture(NAMED_PFTexMipAlpha, 0, loadI32(ALLOC_LABEL_IDS, iconNum));
                 drawSimpleMesh(NAMED_SMCell);
             }
@@ -363,7 +363,7 @@ main(int launchID)
     g_DT = minf(g_DT, 0.2f);
 
     if (g_Zoom != state->zoomTarget) {
-        float dz = g_DT * 1.7f;
+        float dz = g_DT * 3.5f;
         if (state->zoomTarget < 0.5f) {
             dz = -dz;
         }
@@ -389,29 +389,19 @@ main(int launchID)
     }
 
     // icons & labels
-    //Decide if in portrait or landscape
     int iconCount = state->iconCount;
-    int colCount = -1;
-
     if (getWidth() > getHeight()) {
-        colCount = 7;
-	// last number = number of rows
-        g_PosMax = ((iconCount + colCount - 1) / colCount) - 3;
-
-        if (g_PosMax < 0) g_PosMax = 0;
-    	updatePos(0.1f);
-   	updateReadback();
+        g_Cols = 6;
+        g_Rows = 3;
+    } else {
+        g_Cols = 4;
+        g_Rows = 4;
     }
-    else {
-	colCount = params->launcherCols;
-        g_PosMax = ((iconCount + colCount - 1) / colCount) - (colCount-1); 
+    g_PosMax = ((iconCount + (g_Cols-1)) / g_Cols) - g_Rows;
+    if (g_PosMax < 0) g_PosMax = 0;
 
-        if (g_PosMax < 0) g_PosMax = 0;
-    	updatePos(0.1f);
-   	updateReadback();
-    }
-    
-    
+    updatePos();
+    updateReadback();
 
     //debugF("    draw g_PosPage", g_PosPage);
 
@@ -419,9 +409,7 @@ main(int launchID)
     drawFrontGrid(g_PosPage, g_Animation);
 
     bindProgramFragment(NAMED_PFTexNearest);
-    
-    //Disable drawing the home button on landscape
-    if(getWidth()<getHeight()) draw_home_button();
+    draw_home_button();
 
     // This is a WAR to do a rendering pass without drawing during init to
     // force the driver to preload and compile its shaders.
@@ -436,3 +424,4 @@ main(int launchID)
     // So we keep rendering until the bug is fixed.
     return lastFrame((g_PosVelocity != 0) || fracf(g_PosPage) || g_Zoom != state->zoomTarget || (g_MoveToTime != 0));
 }
+
