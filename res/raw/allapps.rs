@@ -110,7 +110,7 @@ void move() {
     if (g_LastTouchDown) {
         float dx = -(state->newPositionX - g_LastPositionX);
         g_PosVelocity = 0;
-        g_PosPage += dx * 7.2f;
+        g_PosPage += dx * 5.2f;
 
         float pmin = -0.49f;
         float pmax = g_PosMax + 0.49f;
@@ -138,9 +138,9 @@ void setZoom() {
 
 void fling() {
     g_LastTouchDown = 0;
-    g_PosVelocity = -state->flingVelocity * 6;
+    g_PosVelocity = -state->flingVelocity * 4;
     float av = fabsf(g_PosVelocity);
-    float minVel = 1.5f;
+    float minVel = 3.5f;
 
     minVel *= 1.f - (fabsf(fracf(g_PosPage + 0.5f) - 0.5f) * 0.45f);
 
@@ -363,7 +363,7 @@ main(int launchID)
     g_DT = minf(g_DT, 0.2f);
 
     if (g_Zoom != state->zoomTarget) {
-        float dz = g_DT * 3.5f;
+        float dz = g_DT * 1.7f;
         if (state->zoomTarget < 0.5f) {
             dz = -dz;
         }
@@ -424,4 +424,3 @@ main(int launchID)
     // So we keep rendering until the bug is fixed.
     return lastFrame((g_PosVelocity != 0) || fracf(g_PosPage) || g_Zoom != state->zoomTarget || (g_MoveToTime != 0));
 }
-
